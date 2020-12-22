@@ -9,8 +9,8 @@ MainWindow::MainWindow(QWidget* parent)
     setStatusBar(statusbar);
 
     auto tb = new QToolBar(this);
-    auto run_btn = new QPushButton(QString::fromWCharArray(L"运行"), tb);
-    tb->addWidget(run_btn);
+    auto exec_btn = new QPushButton(QString::fromWCharArray(L"运行"), tb);
+    tb->addWidget(exec_btn);
     combo = new QComboBox(tb);
     combo->addItem(QString::fromWCharArray(L"匹配"));
     combo->addItem(QString::fromWCharArray(L"替换"));
@@ -67,18 +67,18 @@ MainWindow::MainWindow(QWidget* parent)
     auto groupbox = new QGroupBox(QString::fromWCharArray(L"结果"), this);
     auto grouplayout = new QVBoxLayout(groupbox);
     groupbox->setLayout(grouplayout);
-    table = new QTableView(groupbox);
-    table->setEditTriggers(QAbstractItemView::NoEditTriggers);
-    table->setSelectionMode(QAbstractItemView::ContiguousSelection);
-    table_model = new QStandardItemModel(table);
-    table->setModel(table_model);
-    grouplayout->addWidget(table);
+    result_table = new QTableView(groupbox);
+    result_table->setEditTriggers(QAbstractItemView::NoEditTriggers);
+    result_table->setSelectionMode(QAbstractItemView::ContiguousSelection);
+    table_model = new QStandardItemModel(result_table);
+    result_table->setModel(table_model);
+    grouplayout->addWidget(result_table);
     result_edit = new QTextEdit(groupbox);
     result_edit->setHidden(true);
     grouplayout->addWidget(result_edit);
 
-    table_menu = new QMenu(table);
-    table_menu->addAction(QString::fromWCharArray(L"复制"), this, &MainWindow::onTableCopy);
+    table_menu = new QMenu(result_table);
+    table_menu->addAction(QString::fromWCharArray(L"复制选区"), this, &MainWindow::onTableCopy);
     table_menu->addAction(QString::fromWCharArray(L"导出 csv"), this, &MainWindow::onTableExportCsv);
 
     layout->addWidget(treeview, 0, 0);
@@ -95,18 +95,18 @@ MainWindow::MainWindow(QWidget* parent)
 
     connect(treeview->selectionModel(), &QItemSelectionModel::currentRowChanged, this, &MainWindow::onTreeCurrentChanged);
     connect(regex_edit, &QTextEdit::textChanged, this, &MainWindow::onTextChanged);
-    connect(run_btn, &QPushButton::clicked, this, &MainWindow::onRunBtnClicked);
+    connect(exec_btn, &QPushButton::clicked, this, &MainWindow::onExecBtnClicked);
     connect(ignore_whitespace_check, &QCheckBox::stateChanged, this, &MainWindow::onCheckChanged);
     connect(case_insensitive_check, &QCheckBox::stateChanged, this, &MainWindow::onCheckChanged);
     connect(multi_line_check, &QCheckBox::stateChanged, this, &MainWindow::onCheckChanged);
     connect(dot_matches_new_line_check, &QCheckBox::stateChanged, this, &MainWindow::onCheckChanged);
     connect(timer, &QTimer::timeout, this, &MainWindow::onTimer);
     connect(combo, static_cast<void (QComboBox::*)(int)>(&QComboBox::currentIndexChanged), this, &MainWindow::onComboChanged);
-    connect(table->selectionModel(), &QItemSelectionModel::currentChanged, this, &MainWindow::onTableSelectionChanged);
+    connect(result_table->selectionModel(), &QItemSelectionModel::currentChanged, this, &MainWindow::onTableSelectionChanged);
 
     regex_edit->installEventFilter(this);
     input_edit->installEventFilter(this);
-    table->installEventFilter(this);
+    result_table->installEventFilter(this);
 
     // 强制刷新
     onTimer();
@@ -117,7 +117,7 @@ void MainWindow::onComboChanged(int index)
     qDebug() << index;
     replace_edit->setHidden(index != 1);
     result_edit->setHidden(index == 0);
-    table->setHidden(index != 0);
+    result_table->setHidden(index != 0);
 }
 
 void MainWindow::resetTextColor(QTextEdit* edit)
@@ -228,8 +228,8 @@ void MainWindow::onMatch()
     } catch (const std::exception& ex) {
         table_model->appendRow(new QStandardItem(QString::fromWCharArray(L"错误：%1").arg(QString::fromUtf8(ex.what()))));
     }
-    table->resizeRowsToContents();
-    //table->resizeColumnsToContents();
+    result_table->resizeRowsToContents();
+    //result_table->resizeColumnsToContents();
 }
 
 void MainWindow::onReplace()
@@ -267,7 +267,7 @@ void MainWindow::onSplit()
     }
 }
 
-void MainWindow::onRunBtnClicked()
+void MainWindow::onExecBtnClicked()
 {
     // 强制刷新
     onTimer();
@@ -301,7 +301,7 @@ QList<QStringList> MainWindow::getTableSelectedItems()
     QList<QStringList> result;
     QStringList rowlist;
     int lastrow = 0;
-    for (auto&& i : table->selectionModel()->selectedIndexes()) {
+    for (auto&& i : result_table->selectionModel()->selectedIndexes()) {
         if (rowlist.empty()) {
             lastrow = i.row();
         }
@@ -339,14 +339,32 @@ void MainWindow::onTableExportCsv()
         }
         std::stringstream ss;
         auto writer = csv::make_csv_writer(ss);
-        auto items = getTableSelectedItems();
-        for (auto&& i : items) {
+        // 输出列标题
+        {
+            auto n = table_model->columnCount();
             std::vector<std::string> row;
-            for (auto&& j : i) {
-                auto s = j.toUtf8();
+            for (size_t i = 0; i < n; i++)
+            {
+                auto s = table_model->headerData(i, Qt::Orientation::Horizontal).toString().toUtf8();
                 row.emplace_back(s.data(), s.size());
             }
             writer << row;
+        }
+        // 输出全部内容
+        {
+            auto nRow = table_model->rowCount();
+            auto nCol = table_model->columnCount();
+            for (size_t r = 0; r < nRow; r++)
+            {
+                std::vector<std::string> row;
+                for (size_t c = 0; c < nCol; c++)
+                {
+                    auto index = table_model->index(r, c);
+                    auto s = table_model->data(index).toString().toUtf8();
+                    row.emplace_back(s.data(), s.size());
+                }
+                writer << row;
+            }
         }
         // UTF-8 BOM
         f.write("\xEF\xBB\xBF");
@@ -366,9 +384,9 @@ bool MainWindow::eventFilter(QObject* watched, QEvent* event)
         if (event->type() == QEvent::FocusIn) {
             resetTextColor(static_cast<QTextEdit*>(watched));
         }
-    } else if (watched == table) {
+    } else if (watched == result_table) {
         if (event->type() == QEvent::ContextMenu) {
-            if (table->currentIndex().isValid()) {
+            if (result_table->currentIndex().isValid()) {
                 table_menu->exec(cursor().pos());
             }
         }

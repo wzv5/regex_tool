@@ -17,7 +17,7 @@ private:
     void fillTree(QStandardItem* parent, const TreeNode* tree);
     void onTextChanged();
     void onTreeCurrentChanged(const QModelIndex& current, const QModelIndex&);
-    void onRunBtnClicked();
+    void onExecBtnClicked();
     void onCheckChanged();
     void onTableCopy();
     void onTableExportCsv();
@@ -34,7 +34,7 @@ private:
     QTextEdit* input_edit;
     QStandardItemModel* tree_model;
     QStandardItemModel* table_model;
-    QTableView* table;
+    QTableView* result_table;
     QString last_regex;
     rust::Box<Regex> re;
     QStatusBar* statusbar;
