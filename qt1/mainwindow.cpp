@@ -1,9 +1,8 @@
 ﻿#include "stdafx.h"
 #include "mainwindow.h"
 
-MainWindow::MainWindow(QWidget* parent)
-    : QMainWindow(parent)
-    , re(rust::Box<Regex>::from_raw(nullptr))
+MainWindow::MainWindow(QWidget *parent)
+    : QMainWindow(parent), re(rust::Box<Regex>::from_raw(nullptr))
 {
     statusbar = new QStatusBar(this);
     setStatusBar(statusbar);
@@ -120,7 +119,7 @@ void MainWindow::onComboChanged(int index)
     result_table->setHidden(index != 0);
 }
 
-void MainWindow::resetTextColor(QTextEdit* edit)
+void MainWindow::resetTextColor(QTextEdit *edit)
 {
     edit->selectAll();
     auto fmt = QTextCharFormat();
@@ -128,7 +127,7 @@ void MainWindow::resetTextColor(QTextEdit* edit)
     edit->setCurrentCharFormat(fmt);
 }
 
-void MainWindow::setTextColor(QTextEdit* edit, int start, int end)
+void MainWindow::setTextColor(QTextEdit *edit, int start, int end)
 {
     // 转换偏移，从 UTF-8 偏移转到 UTF-16 偏移
     auto utf8_str = edit->toPlainText().toUtf8();
@@ -152,13 +151,14 @@ void MainWindow::setTextColor(QTextEdit* edit, int start, int end)
     edit->setCurrentCharFormat(fmt);
 }
 
-void MainWindow::fillTree(QStandardItem* parent, const TreeNode* tree)
+void MainWindow::fillTree(QStandardItem *parent, const TreeNode *tree)
 {
     parent->setText(QString::fromUtf8(tree->title.data(), tree->title.size()));
     parent->setData(QPoint(tree->start, tree->end), Qt::UserRole + 1);
     parent->setData(QString::fromUtf8(tree->content.data(), tree->content.size()), Qt::UserRole + 2);
     parent->setToolTip(QString::fromUtf8(tree->content.data(), tree->content.size()));
-    for (auto& i : tree->children) {
+    for (auto &i : tree->children)
+    {
         auto child = new QStandardItem();
         parent->appendRow(child);
         fillTree(child, &i);
@@ -173,25 +173,29 @@ void MainWindow::onTextChanged()
 void MainWindow::onTimer()
 {
     auto text = regex_edit->toPlainText();
-    if (text != last_regex || text.isEmpty()) {
+    if (text != last_regex || text.isEmpty())
+    {
         tree_model->clear();
         last_regex.clear();
         re = re.from_raw(nullptr);
-        try {
+        try
+        {
             last_regex = text;
             auto tree = regex_parse(text.toUtf8().data(), ignore_whitespace_check->isChecked());
             re = regex_new(text.toUtf8().data(), ignore_whitespace_check->isChecked(), case_insensitive_check->isChecked(), multi_line_check->isChecked(), dot_matches_new_line_check->isChecked());
             auto root = new QStandardItem();
             fillTree(root, &tree);
             tree_model->appendRow(root);
-        } catch (const std::exception& ex) {
+        }
+        catch (const std::exception &ex)
+        {
             tree_model->appendRow(new QStandardItem(QString::fromWCharArray(L"错误：%1").arg(QString::fromUtf8(ex.what()))));
         }
         treeview->expandAll();
     }
 }
 
-void MainWindow::onTreeCurrentChanged(const QModelIndex& current, const QModelIndex&)
+void MainWindow::onTreeCurrentChanged(const QModelIndex &current, const QModelIndex &)
 {
     auto point = current.data(Qt::UserRole + 1).toPoint();
     setTextColor(regex_edit, point.x(), point.y());
@@ -202,30 +206,40 @@ void MainWindow::onTreeCurrentChanged(const QModelIndex& current, const QModelIn
 void MainWindow::onMatch()
 {
     auto s = input_edit->toPlainText().toUtf8();
-    try {
+    try
+    {
         // 无法直接获取内部指针，变通一下
-        if (!&*re) {
+        if (!&*re)
+        {
             throw std::runtime_error(QString::fromWCharArray(L"无法解析").toUtf8().data());
         }
         auto result = regex_match(re, s.data());
         table_model->setColumnCount(result.group_names.size());
-        for (size_t i = 0; i < result.group_names.size(); i++) {
-            if (result.group_names[i].length()) {
+        for (size_t i = 0; i < result.group_names.size(); i++)
+        {
+            if (result.group_names[i].length())
+            {
                 table_model->setHeaderData(i, Qt::Orientation::Horizontal, QString("%1(%2)").arg(QString::fromUtf8(result.group_names[i].data(), result.group_names[i].size()), QString::number(i)));
-            } else {
+            }
+            else
+            {
                 table_model->setHeaderData(i, Qt::Orientation::Horizontal, QString::number(i));
             }
         }
-        for (auto&& m : result.matches) {
-            auto row = QList<QStandardItem*>();
-            for (auto&& g : m.groups) {
+        for (auto &&m : result.matches)
+        {
+            auto row = QList<QStandardItem *>();
+            for (auto &&g : m.groups)
+            {
                 auto item = new QStandardItem(QString::fromUtf8(g.text.data(), g.text.size()));
                 item->setData(QPoint(g.start, g.end), Qt::UserRole + 1);
                 row.append(item);
             }
             table_model->appendRow(row);
         }
-    } catch (const std::exception& ex) {
+    }
+    catch (const std::exception &ex)
+    {
         table_model->appendRow(new QStandardItem(QString::fromWCharArray(L"错误：%1").arg(QString::fromUtf8(ex.what()))));
     }
     result_table->resizeRowsToContents();
@@ -236,14 +250,18 @@ void MainWindow::onReplace()
 {
     auto text = input_edit->toPlainText().toUtf8();
     auto rep = replace_edit->toPlainText().toUtf8();
-    try {
+    try
+    {
         // 无法直接获取内部指针，变通一下
-        if (!&*re) {
+        if (!&*re)
+        {
             throw std::runtime_error(QString::fromWCharArray(L"无法解析").toUtf8().data());
         }
         auto result = regex_replace(re, text.data(), rep.data());
         result_edit->setText(QString::fromUtf8(result.data(), result.size()));
-    } catch (const std::exception& ex) {
+    }
+    catch (const std::exception &ex)
+    {
         result_edit->setText(QString::fromWCharArray(L"错误：%1").arg(QString::fromUtf8(ex.what())));
     }
 }
@@ -251,18 +269,23 @@ void MainWindow::onReplace()
 void MainWindow::onSplit()
 {
     auto text = input_edit->toPlainText().toUtf8();
-    try {
+    try
+    {
         // 无法直接获取内部指针，变通一下
-        if (!&*re) {
+        if (!&*re)
+        {
             throw std::runtime_error(QString::fromWCharArray(L"无法解析").toUtf8().data());
         }
         auto result = regex_split(re, text.data());
         QStringList list;
-        for (auto&& i : result) {
+        for (auto &&i : result)
+        {
             list.append(QString::fromUtf8(i.data(), i.size()));
         }
         result_edit->setText(list.join("\n"));
-    } catch (const std::exception& ex) {
+    }
+    catch (const std::exception &ex)
+    {
         result_edit->setText(QString::fromWCharArray(L"错误：%1").arg(QString::fromUtf8(ex.what())));
     }
 }
@@ -275,7 +298,8 @@ void MainWindow::onExecBtnClicked()
     table_model->clear();
     result_edit->clear();
 
-    switch (combo->currentIndex()) {
+    switch (combo->currentIndex())
+    {
     case 0:
         onMatch();
         break;
@@ -301,18 +325,22 @@ QList<QStringList> MainWindow::getTableSelectedItems()
     QList<QStringList> result;
     QStringList rowlist;
     int lastrow = 0;
-    for (auto&& i : result_table->selectionModel()->selectedIndexes()) {
-        if (rowlist.empty()) {
+    for (auto &&i : result_table->selectionModel()->selectedIndexes())
+    {
+        if (rowlist.empty())
+        {
             lastrow = i.row();
         }
-        if (i.row() != lastrow) {
+        if (i.row() != lastrow)
+        {
             lastrow = i.row();
             result.append(rowlist);
             rowlist.clear();
         }
         rowlist.append(i.data().toString());
     }
-    if (!rowlist.empty()) {
+    if (!rowlist.empty())
+    {
         result.append(rowlist);
     }
     return result;
@@ -322,7 +350,8 @@ void MainWindow::onTableCopy()
 {
     auto items = getTableSelectedItems();
     QStringList result;
-    for (auto&& i : items) {
+    for (auto &&i : items)
+    {
         result.append(i.join("\t"));
     }
     qApp->clipboard()->setText(result.join("\n"));
@@ -331,9 +360,11 @@ void MainWindow::onTableCopy()
 void MainWindow::onTableExportCsv()
 {
     auto filename = QFileDialog::getSaveFileName(this, QString::fromWCharArray(L"选择导出文件"), "", "*.csv");
-    if (!filename.isEmpty()) {
+    if (!filename.isEmpty())
+    {
         QFile f(filename);
-        if (!f.open(QIODevice::WriteOnly | QIODevice::Text)) {
+        if (!f.open(QIODevice::WriteOnly | QIODevice::Text))
+        {
             QMessageBox::critical(this, QString::fromWCharArray(L"错误"), QString::fromWCharArray(L"打开文件失败"));
             return;
         }
@@ -378,15 +409,21 @@ void MainWindow::onTableSelectionChanged(const QModelIndex &current, const QMode
     setTextColor(input_edit, point.x(), point.y());
 }
 
-bool MainWindow::eventFilter(QObject* watched, QEvent* event)
+bool MainWindow::eventFilter(QObject *watched, QEvent *event)
 {
-    if (watched == regex_edit || watched == input_edit) {
-        if (event->type() == QEvent::FocusIn) {
-            resetTextColor(static_cast<QTextEdit*>(watched));
+    if (watched == regex_edit || watched == input_edit)
+    {
+        if (event->type() == QEvent::FocusIn)
+        {
+            resetTextColor(static_cast<QTextEdit *>(watched));
         }
-    } else if (watched == result_table) {
-        if (event->type() == QEvent::ContextMenu) {
-            if (result_table->currentIndex().isValid()) {
+    }
+    else if (watched == result_table)
+    {
+        if (event->type() == QEvent::ContextMenu)
+        {
+            if (result_table->currentIndex().isValid())
+            {
                 table_menu->exec(cursor().pos());
             }
         }
