@@ -14,7 +14,7 @@ if (WIN32)
   set(CMAKE_WIN32_EXECUTABLE true)
 endif()
 
-find_package(Qt6 COMPONENTS Widgets)
+find_package(Qt6 COMPONENTS Widgets QUIET)
 if (NOT Qt6_FOUND)
   find_package(Qt5 COMPONENTS Widgets REQUIRED)
 endif()

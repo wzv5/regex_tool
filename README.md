@@ -28,7 +28,7 @@ cargo install cxxbridge-cmd
 
 之后直接使用 cmake 编译即可。
 
-Windows 平台或许需要设置 `CMAKE_PREFIX_PATH`，添加 Qt 库的相关路径，如 `-DCMAKE_PREFIX_PATH=D:/Qt/5.15.2/msvc2019_64/lib/cmake/Qt5`
+Windows 平台或许需要设置 `CMAKE_PREFIX_PATH`，添加 Qt 库的相关路径，如 `-DCMAKE_PREFIX_PATH=D:/Qt/6.0.0/msvc2019_64`。
 
 ## 已知问题
 
