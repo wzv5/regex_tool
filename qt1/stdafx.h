@@ -22,7 +22,7 @@
 #include <QPushButton>
 #include <QStatusBar>
 #include <QTableView>
-#include <QTextEdit>
+#include <QPlainTextEdit>
 #include <QToolBar>
 #include <QTreeView>
 #include <QtGui>

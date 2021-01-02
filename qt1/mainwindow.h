@@ -13,8 +13,8 @@ public:
 
 private:
     bool eventFilter(QObject *watched, QEvent *event);
-    void resetTextColor(QTextEdit *edit);
-    void setTextColor(QTextEdit *edit, int start, int len);
+    void resetTextColor(QPlainTextEdit *edit);
+    void setTextColor(QPlainTextEdit *edit, int start, int len);
     void fillTree(QStandardItem *parent, const TreeNode *tree);
     void onTextChanged();
     void onTreeCurrentChanged(const QModelIndex &current, const QModelIndex &);
@@ -31,8 +31,8 @@ private:
     void onTableSelectionChanged(const QModelIndex &current, const QModelIndex &previous);
 
     QTreeView *treeview;
-    QTextEdit *regex_edit;
-    QTextEdit *input_edit;
+    QPlainTextEdit *regex_edit;
+    QPlainTextEdit *input_edit;
     QStandardItemModel *tree_model;
     QStandardItemModel *table_model;
     QTableView *result_table;
@@ -46,7 +46,7 @@ private:
     QMenu *table_menu;
     QTimer *timer;
     QComboBox *combo;
-    QTextEdit *result_edit;
-    QTextEdit *replace_edit;
+    QPlainTextEdit *result_edit;
+    QPlainTextEdit *replace_edit;
 };
 #endif // MAINWINDOW_H

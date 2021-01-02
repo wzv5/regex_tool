@@ -50,16 +50,16 @@ MainWindow::MainWindow(QWidget *parent)
     auto right_layout = new QVBoxLayout(right_widget);
     right_layout->setContentsMargins(0, 0, 0, 0);
     right_widget->setLayout(right_layout);
-    regex_edit = new QTextEdit(this);
+    regex_edit = new QPlainTextEdit(this);
     regex_edit->setPlaceholderText(QString::fromWCharArray(L"在此输入正则表达式"));
     right_layout->addWidget(regex_edit);
 
-    replace_edit = new QTextEdit(this);
+    replace_edit = new QPlainTextEdit(this);
     replace_edit->setPlaceholderText(QString::fromWCharArray(L"在此输入用来替换的文本\n$x 或 ${x} 可引用分组，如 $1、$a、${abc}"));
     replace_edit->setHidden(true);
     right_layout->addWidget(replace_edit);
 
-    input_edit = new QTextEdit(this);
+    input_edit = new QPlainTextEdit(this);
     input_edit->setPlaceholderText(QString::fromWCharArray(L"在此输入用来匹配的文本"));
     right_layout->addWidget(input_edit);
 
@@ -72,7 +72,7 @@ MainWindow::MainWindow(QWidget *parent)
     table_model = new QStandardItemModel(result_table);
     result_table->setModel(table_model);
     grouplayout->addWidget(result_table);
-    result_edit = new QTextEdit(groupbox);
+    result_edit = new QPlainTextEdit(groupbox);
     result_edit->setHidden(true);
     grouplayout->addWidget(result_edit);
 
@@ -93,7 +93,7 @@ MainWindow::MainWindow(QWidget *parent)
     timer->setSingleShot(true);
 
     connect(treeview->selectionModel(), &QItemSelectionModel::currentRowChanged, this, &MainWindow::onTreeCurrentChanged);
-    connect(regex_edit, &QTextEdit::textChanged, this, &MainWindow::onTextChanged);
+    connect(regex_edit, &QPlainTextEdit::textChanged, this, &MainWindow::onTextChanged);
     connect(exec_btn, &QPushButton::clicked, this, &MainWindow::onExecBtnClicked);
     connect(ignore_whitespace_check, &QCheckBox::stateChanged, this, &MainWindow::onCheckChanged);
     connect(case_insensitive_check, &QCheckBox::stateChanged, this, &MainWindow::onCheckChanged);
@@ -113,21 +113,28 @@ MainWindow::MainWindow(QWidget *parent)
 
 void MainWindow::onComboChanged(int index)
 {
-    qDebug() << index;
     replace_edit->setHidden(index != 1);
     result_edit->setHidden(index == 0);
     result_table->setHidden(index != 0);
 }
 
-void MainWindow::resetTextColor(QTextEdit *edit)
+void MainWindow::resetTextColor(QPlainTextEdit *edit)
 {
-    edit->selectAll();
+    auto cursor = edit->textCursor();
+    cursor.select(QTextCursor::SelectionType::Document);
+
     auto fmt = QTextCharFormat();
-    fmt.setBackground(QBrush(QColor::fromRgb(255, 255, 255)));
-    edit->setCurrentCharFormat(fmt);
+    fmt.setBackground(QBrush(QColor(Qt::white)));
+
+    QList<QTextEdit::ExtraSelection> extraSelections;
+    QTextEdit::ExtraSelection selection;
+    selection.cursor = cursor;
+    selection.format = fmt;
+    extraSelections.append(selection);
+    edit->setExtraSelections(extraSelections);
 }
 
-void MainWindow::setTextColor(QTextEdit *edit, int start, int end)
+void MainWindow::setTextColor(QPlainTextEdit *edit, int start, int end)
 {
     // 转换偏移，从 UTF-8 偏移转到 UTF-16 偏移
     auto utf8_str = edit->toPlainText().toUtf8();
@@ -135,20 +142,23 @@ void MainWindow::setTextColor(QTextEdit *edit, int start, int end)
     end = QString::fromUtf8(utf8_str.data(), end).size();
 
     resetTextColor(edit);
+
     auto cursor = edit->textCursor();
     cursor.setPosition(start);
+    edit->setTextCursor(cursor);
+    edit->ensureCursorVisible();
     cursor.setPosition(end, QTextCursor::KeepAnchor);
-    // 不能用下面这行，会造成 emoji 偏移错误
-    //cursor.movePosition(QTextCursor::Right, QTextCursor::KeepAnchor, end - start);
-    edit->setTextCursor(cursor);
-    auto fmt = QTextCharFormat();
-    fmt.setBackground(QBrush(QColor::fromRgba(qRgba(255, 0, 0, 100))));
-    edit->setCurrentCharFormat(fmt);
 
-    cursor.movePosition(QTextCursor::End);
-    edit->setTextCursor(cursor);
-    fmt.setBackground(QBrush(QColor::fromRgb(255, 255, 255)));
-    edit->setCurrentCharFormat(fmt);
+    auto fmt = QTextCharFormat();
+    fmt.setBackground(QBrush(QColor(Qt::red).lighter(170)));
+    fmt.setProperty(QTextFormat::FullWidthSelection, true);
+
+    QList<QTextEdit::ExtraSelection> extraSelections;
+    QTextEdit::ExtraSelection selection;
+    selection.cursor = cursor;
+    selection.format = fmt;
+    extraSelections.append(selection);
+    edit->setExtraSelections(extraSelections);
 }
 
 void MainWindow::fillTree(QStandardItem *parent, const TreeNode *tree)
@@ -258,11 +268,11 @@ void MainWindow::onReplace()
             throw std::runtime_error(QString::fromWCharArray(L"无法解析").toUtf8().data());
         }
         auto result = regex_replace(re, text.data(), rep.data());
-        result_edit->setText(QString::fromUtf8(result.data(), result.size()));
+        result_edit->setPlainText(QString::fromUtf8(result.data(), result.size()));
     }
     catch (const std::exception &ex)
     {
-        result_edit->setText(QString::fromWCharArray(L"错误：%1").arg(QString::fromUtf8(ex.what())));
+        result_edit->setPlainText(QString::fromWCharArray(L"错误：%1").arg(QString::fromUtf8(ex.what())));
     }
 }
 
@@ -282,11 +292,11 @@ void MainWindow::onSplit()
         {
             list.append(QString::fromUtf8(i.data(), i.size()));
         }
-        result_edit->setText(list.join("\n"));
+        result_edit->setPlainText(list.join("\n"));
     }
     catch (const std::exception &ex)
     {
-        result_edit->setText(QString::fromWCharArray(L"错误：%1").arg(QString::fromUtf8(ex.what())));
+        result_edit->setPlainText(QString::fromWCharArray(L"错误：%1").arg(QString::fromUtf8(ex.what())));
     }
 }
 
@@ -415,7 +425,7 @@ bool MainWindow::eventFilter(QObject *watched, QEvent *event)
     {
         if (event->type() == QEvent::FocusIn)
         {
-            resetTextColor(static_cast<QTextEdit *>(watched));
+            resetTextColor(static_cast<QPlainTextEdit *>(watched));
         }
     }
     else if (watched == result_table)
