@@ -1,5 +1,6 @@
 #include <algorithm>
 #include <array>
+#include <cassert>
 #include <cstddef>
 #include <cstdint>
 #include <exception>
@@ -74,9 +75,13 @@ public:
   bool operator>(const String &) const noexcept;
   bool operator>=(const String &) const noexcept;
 
+  void swap(String &) noexcept;
+
   String(unsafe_bitcopy_t, const String &) noexcept;
 
 private:
+  friend void swap(String &lhs, String &rhs) noexcept { lhs.swap(rhs); }
+
   std::array<std::uintptr_t, 3> repr;
 };
 #endif // CXXBRIDGE1_RUST_STRING
@@ -116,17 +121,15 @@ public:
   bool operator>(const Str &) const noexcept;
   bool operator>=(const Str &) const noexcept;
 
+  void swap(Str &) noexcept;
+
 private:
+  class uninit;
+  Str(uninit) noexcept;
   friend impl<Str>;
-  const char *ptr;
-  std::size_t len;
+
+  std::array<std::uintptr_t, 2> repr;
 };
-
-inline const char *Str::data() const noexcept { return this->ptr; }
-
-inline std::size_t Str::size() const noexcept { return this->len; }
-
-inline std::size_t Str::length() const noexcept { return this->len; }
 #endif // CXXBRIDGE1_RUST_STR
 
 #ifndef CXXBRIDGE1_RUST_SLICE
@@ -173,10 +176,17 @@ public:
   iterator begin() const noexcept;
   iterator end() const noexcept;
 
+  void swap(Slice &) noexcept;
+
 private:
+  class uninit;
+  Slice(uninit) noexcept;
   friend impl<Slice>;
-  void *ptr;
-  std::size_t len;
+  friend void sliceInit(void *, const void *, std::size_t) noexcept;
+  friend void *slicePtr(const void *) noexcept;
+  friend std::size_t sliceLen(const void *) noexcept;
+
+  std::array<std::uintptr_t, 2> repr;
 };
 
 template <typename T>
@@ -217,37 +227,39 @@ private:
 };
 
 template <typename T>
-Slice<T>::Slice() noexcept
-    : ptr(reinterpret_cast<void *>(align_of<T>())), len(0) {}
+Slice<T>::Slice() noexcept {
+  sliceInit(this, reinterpret_cast<void *>(align_of<T>()), 0);
+}
 
 template <typename T>
-Slice<T>::Slice(T *s, std::size_t count) noexcept
-    : ptr(const_cast<typename std::remove_const<T>::type *>(s)), len(count) {}
+Slice<T>::Slice(T *s, std::size_t count) noexcept {
+  sliceInit(this, const_cast<typename std::remove_const<T>::type *>(s), count);
+}
 
 template <typename T>
 T *Slice<T>::data() const noexcept {
-  return reinterpret_cast<T *>(this->ptr);
+  return reinterpret_cast<T *>(slicePtr(this));
 }
 
 template <typename T>
 std::size_t Slice<T>::size() const noexcept {
-  return this->len;
+  return sliceLen(this);
 }
 
 template <typename T>
 std::size_t Slice<T>::length() const noexcept {
-  return this->len;
+  return this->size();
 }
 
 template <typename T>
 bool Slice<T>::empty() const noexcept {
-  return this->len == 0;
+  return this->size() == 0;
 }
 
 template <typename T>
 T &Slice<T>::operator[](std::size_t n) const noexcept {
   assert(n < this->size());
-  auto pos = static_cast<char *>(this->ptr) + size_of<T>() * n;
+  auto pos = static_cast<char *>(slicePtr(this)) + size_of<T>() * n;
   return *reinterpret_cast<T *>(pos);
 }
 
@@ -268,7 +280,7 @@ T &Slice<T>::front() const noexcept {
 template <typename T>
 T &Slice<T>::back() const noexcept {
   assert(!this->empty());
-  return (*this)[this->len - 1];
+  return (*this)[this->size() - 1];
 }
 
 template <typename T>
@@ -287,7 +299,7 @@ template <typename T>
 typename Slice<T>::iterator::reference Slice<T>::iterator::operator[](
     typename Slice<T>::iterator::difference_type n) const noexcept {
   auto pos = static_cast<char *>(this->pos) + this->stride * n;
-  return *static_cast<T *>(pos);
+  return *reinterpret_cast<T *>(pos);
 }
 
 template <typename T>
@@ -387,7 +399,7 @@ bool Slice<T>::iterator::operator>=(const iterator &other) const noexcept {
 template <typename T>
 typename Slice<T>::iterator Slice<T>::begin() const noexcept {
   iterator it;
-  it.pos = this->ptr;
+  it.pos = slicePtr(this);
   it.stride = size_of<T>();
   return it;
 }
@@ -395,8 +407,13 @@ typename Slice<T>::iterator Slice<T>::begin() const noexcept {
 template <typename T>
 typename Slice<T>::iterator Slice<T>::end() const noexcept {
   iterator it = this->begin();
-  it.pos = static_cast<char *>(it.pos) + it.stride * this->len;
+  it.pos = static_cast<char *>(it.pos) + it.stride * this->size();
   return it;
+}
+
+template <typename T>
+void Slice<T>::swap(Slice &rhs) noexcept {
+  std::swap(*this, rhs);
 }
 #endif // CXXBRIDGE1_RUST_SLICE
 
@@ -411,14 +428,12 @@ public:
   using pointer = typename std::add_pointer<T>::type;
 
   Box() = delete;
-  Box(const Box &);
   Box(Box &&) noexcept;
   ~Box() noexcept;
 
   explicit Box(const T &);
   explicit Box(T &&);
 
-  Box &operator=(const Box &);
   Box &operator=(Box &&) noexcept;
 
   const T *operator->() const noexcept;
@@ -428,6 +443,8 @@ public:
 
   template <typename... Fields>
   static Box in_place(Fields &&...);
+
+  void swap(Box &) noexcept;
 
   static Box from_raw(T *) noexcept;
 
@@ -440,6 +457,9 @@ private:
   class allocation;
   Box(uninit) noexcept;
   void drop() noexcept;
+
+  friend void swap(Box &lhs, Box &rhs) noexcept { lhs.swap(rhs); }
+
   T *ptr;
 };
 
@@ -460,9 +480,6 @@ public:
   }
   T *ptr;
 };
-
-template <typename T>
-Box<T>::Box(const Box &other) : Box(*other) {}
 
 template <typename T>
 Box<T>::Box(Box &&other) noexcept : ptr(other.ptr) {
@@ -490,19 +507,6 @@ Box<T>::~Box() noexcept {
   if (this->ptr) {
     this->drop();
   }
-}
-
-template <typename T>
-Box<T> &Box<T>::operator=(const Box &other) {
-  if (this->ptr) {
-    **this = *other;
-  } else {
-    allocation alloc;
-    ::new (alloc.ptr) T(*other);
-    this->ptr = alloc.ptr;
-    alloc.ptr = nullptr;
-  }
-  return *this;
 }
 
 template <typename T>
@@ -543,6 +547,12 @@ Box<T> Box<T>::in_place(Fields &&... fields) {
   ::new (ptr) T{std::forward<Fields>(fields)...};
   alloc.ptr = nullptr;
   return from_raw(ptr);
+}
+
+template <typename T>
+void Box<T>::swap(Box &rhs) noexcept {
+  using std::swap;
+  swap(this->ptr, rhs.ptr);
 }
 
 template <typename T>
@@ -620,12 +630,16 @@ public:
   const_iterator cbegin() const noexcept;
   const_iterator cend() const noexcept;
 
+  void swap(Vec &) noexcept;
+
   Vec(unsafe_bitcopy_t, const Vec &) noexcept;
 
 private:
   void reserve_total(std::size_t cap) noexcept;
   void set_len(std::size_t len) noexcept;
   void drop() noexcept;
+
+  friend void swap(Vec &lhs, Vec &rhs) noexcept { lhs.swap(rhs); }
 
   std::array<std::uintptr_t, 3> repr;
 };
@@ -792,6 +806,12 @@ typename Vec<T>::const_iterator Vec<T>::cend() const noexcept {
 }
 
 template <typename T>
+void Vec<T>::swap(Vec &rhs) noexcept {
+  using std::swap;
+  swap(this->repr, rhs.repr);
+}
+
+template <typename T>
 Vec<T>::Vec(unsafe_bitcopy_t, const Vec &bits) noexcept : repr(bits.repr) {}
 #endif // CXXBRIDGE1_RUST_VEC
 
@@ -923,14 +943,6 @@ struct PtrLen final {
 } // namespace repr
 
 template <>
-class impl<Str> final {
-public:
-  static repr::PtrLen repr(Str str) noexcept {
-    return repr::PtrLen{const_cast<char *>(str.ptr), str.len};
-  }
-};
-
-template <>
 class impl<Error> final {
 public:
   static Error error(repr::PtrLen repr) noexcept {
@@ -996,6 +1008,8 @@ struct Matches final {
 #ifndef CXXBRIDGE1_STRUCT_Regex
 #define CXXBRIDGE1_STRUCT_Regex
 struct Regex final : public ::rust::Opaque {
+  ~Regex() = delete;
+
 private:
   friend ::rust::layout;
   struct layout {
@@ -1009,15 +1023,15 @@ extern "C" {
 ::std::size_t cxxbridge1$Regex$operator$sizeof() noexcept;
 ::std::size_t cxxbridge1$Regex$operator$alignof() noexcept;
 
-::rust::repr::PtrLen cxxbridge1$regex_parse(::rust::repr::PtrLen s, bool ignore_whitespace, ::TreeNode *return$) noexcept;
+::rust::repr::PtrLen cxxbridge1$regex_parse(::rust::Str s, bool ignore_whitespace, ::TreeNode *return$) noexcept;
 
-::rust::repr::PtrLen cxxbridge1$regex_new(::rust::repr::PtrLen re, bool ignore_whitespace, bool case_insensitive, bool multi_line, bool dot_matches_new_line, ::rust::Box<::Regex> *return$) noexcept;
+::rust::repr::PtrLen cxxbridge1$regex_new(::rust::Str re, bool ignore_whitespace, bool case_insensitive, bool multi_line, bool dot_matches_new_line, ::rust::Box<::Regex> *return$) noexcept;
 
-::rust::repr::PtrLen cxxbridge1$regex_match(const ::rust::Box<::Regex> &re, ::rust::repr::PtrLen text, ::Matches *return$) noexcept;
+::rust::repr::PtrLen cxxbridge1$regex_match(const ::rust::Box<::Regex> &re, ::rust::Str text, ::Matches *return$) noexcept;
 
-void cxxbridge1$regex_replace(const ::rust::Box<::Regex> &re, ::rust::repr::PtrLen text, ::rust::repr::PtrLen rep, ::rust::String *return$) noexcept;
+void cxxbridge1$regex_replace(const ::rust::Box<::Regex> &re, ::rust::Str text, ::rust::Str rep, ::rust::String *return$) noexcept;
 
-void cxxbridge1$regex_split(const ::rust::Box<::Regex> &re, ::rust::repr::PtrLen text, ::rust::Vec<::rust::String> *return$) noexcept;
+void cxxbridge1$regex_split(const ::rust::Box<::Regex> &re, ::rust::Str text, ::rust::Vec<::rust::String> *return$) noexcept;
 } // extern "C"
 
 ::std::size_t Regex::layout::size() noexcept {
@@ -1030,7 +1044,7 @@ void cxxbridge1$regex_split(const ::rust::Box<::Regex> &re, ::rust::repr::PtrLen
 
 ::TreeNode regex_parse(::rust::Str s, bool ignore_whitespace) {
   ::rust::MaybeUninit<::TreeNode> return$;
-  ::rust::repr::PtrLen error$ = cxxbridge1$regex_parse(::rust::impl<::rust::Str>::repr(s), ignore_whitespace, &return$.value);
+  ::rust::repr::PtrLen error$ = cxxbridge1$regex_parse(s, ignore_whitespace, &return$.value);
   if (error$.ptr) {
     throw ::rust::impl<::rust::Error>::error(error$);
   }
@@ -1039,7 +1053,7 @@ void cxxbridge1$regex_split(const ::rust::Box<::Regex> &re, ::rust::repr::PtrLen
 
 ::rust::Box<::Regex> regex_new(::rust::Str re, bool ignore_whitespace, bool case_insensitive, bool multi_line, bool dot_matches_new_line) {
   ::rust::MaybeUninit<::rust::Box<::Regex>> return$;
-  ::rust::repr::PtrLen error$ = cxxbridge1$regex_new(::rust::impl<::rust::Str>::repr(re), ignore_whitespace, case_insensitive, multi_line, dot_matches_new_line, &return$.value);
+  ::rust::repr::PtrLen error$ = cxxbridge1$regex_new(re, ignore_whitespace, case_insensitive, multi_line, dot_matches_new_line, &return$.value);
   if (error$.ptr) {
     throw ::rust::impl<::rust::Error>::error(error$);
   }
@@ -1048,7 +1062,7 @@ void cxxbridge1$regex_split(const ::rust::Box<::Regex> &re, ::rust::repr::PtrLen
 
 ::Matches regex_match(const ::rust::Box<::Regex> &re, ::rust::Str text) {
   ::rust::MaybeUninit<::Matches> return$;
-  ::rust::repr::PtrLen error$ = cxxbridge1$regex_match(re, ::rust::impl<::rust::Str>::repr(text), &return$.value);
+  ::rust::repr::PtrLen error$ = cxxbridge1$regex_match(re, text, &return$.value);
   if (error$.ptr) {
     throw ::rust::impl<::rust::Error>::error(error$);
   }
@@ -1057,13 +1071,13 @@ void cxxbridge1$regex_split(const ::rust::Box<::Regex> &re, ::rust::repr::PtrLen
 
 ::rust::String regex_replace(const ::rust::Box<::Regex> &re, ::rust::Str text, ::rust::Str rep) noexcept {
   ::rust::MaybeUninit<::rust::String> return$;
-  cxxbridge1$regex_replace(re, ::rust::impl<::rust::Str>::repr(text), ::rust::impl<::rust::Str>::repr(rep), &return$.value);
+  cxxbridge1$regex_replace(re, text, rep, &return$.value);
   return ::std::move(return$.value);
 }
 
 ::rust::Vec<::rust::String> regex_split(const ::rust::Box<::Regex> &re, ::rust::Str text) noexcept {
   ::rust::MaybeUninit<::rust::Vec<::rust::String>> return$;
-  cxxbridge1$regex_split(re, ::rust::impl<::rust::Str>::repr(text), &return$.value);
+  cxxbridge1$regex_split(re, text, &return$.value);
   return ::std::move(return$.value);
 }
 

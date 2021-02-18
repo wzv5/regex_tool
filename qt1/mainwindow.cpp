@@ -69,6 +69,7 @@ MainWindow::MainWindow(QWidget *parent)
     result_table = new QTableView(groupbox);
     result_table->setEditTriggers(QAbstractItemView::NoEditTriggers);
     result_table->setSelectionMode(QAbstractItemView::ContiguousSelection);
+    result_table->setVerticalScrollMode(QAbstractItemView::ScrollMode::ScrollPerPixel);
     table_model = new QStandardItemModel(result_table);
     result_table->setModel(table_model);
     grouplayout->addWidget(result_table);
@@ -241,8 +242,10 @@ void MainWindow::onMatch()
             auto row = QList<QStandardItem *>();
             for (auto &&g : m.groups)
             {
-                auto item = new QStandardItem(QString::fromUtf8(g.text.data(), g.text.size()));
+                auto text = QString::fromUtf8(g.text.data(), g.text.size());
+                auto item = new QStandardItem(text);
                 item->setData(QPoint(g.start, g.end), Qt::UserRole + 1);
+                item->setToolTip(text);
                 row.append(item);
             }
             table_model->appendRow(row);
@@ -252,7 +255,7 @@ void MainWindow::onMatch()
     {
         table_model->appendRow(new QStandardItem(QString::fromWCharArray(L"错误：%1").arg(QString::fromUtf8(ex.what()))));
     }
-    result_table->resizeRowsToContents();
+    //result_table->resizeRowsToContents();
     //result_table->resizeColumnsToContents();
 }
 
