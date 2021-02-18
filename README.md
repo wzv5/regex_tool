@@ -12,6 +12,21 @@
 * 支持高亮匹配项
 * 跨平台，已测试 Windows 和 Arch Linux
 
+## 下载
+
+仅限 Windows x64 系统。
+
+<https://github.com/wzv5/regex_tool/releases/latest>
+
+或者使用 [Scoop](https://scoop.sh)：
+
+```
+scoop bucket add wzv5 https://github.com/wzv5/ScoopBucket
+scoop install wzv5/regex-tool
+```
+
+其他系统请自行编译。
+
 ## 截图
 
 ![screenshot_1](screenshot_1.jpg)
