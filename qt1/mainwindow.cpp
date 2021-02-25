@@ -4,76 +4,76 @@
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent), re(rust::Box<Regex>::from_raw(nullptr))
 {
-    statusbar = new QStatusBar(this);
+    statusbar = new QStatusBar();
     setStatusBar(statusbar);
 
-    auto tb = new QToolBar(this);
-    auto exec_btn = new QPushButton(QString::fromWCharArray(L"运行"), tb);
+    auto tb = new QToolBar();
+    auto exec_btn = new QPushButton(QString::fromWCharArray(L"运行"));
     tb->addWidget(exec_btn);
-    combo = new QComboBox(tb);
+    combo = new QComboBox();
     combo->addItem(QString::fromWCharArray(L"匹配"));
     combo->addItem(QString::fromWCharArray(L"替换"));
     combo->addItem(QString::fromWCharArray(L"分割"));
     tb->addWidget(combo);
     addToolBar(tb);
 
-    auto tb2 = new QToolBar(this);
-    ignore_whitespace_check = new QCheckBox(this);
+    auto tb2 = new QToolBar();
+    ignore_whitespace_check = new QCheckBox();
     ignore_whitespace_check->setText(QString::fromWCharArray(L"忽略空白"));
     tb2->addWidget(ignore_whitespace_check);
-    case_insensitive_check = new QCheckBox(this);
+    case_insensitive_check = new QCheckBox();
     case_insensitive_check->setText(QString::fromWCharArray(L"忽略大小写"));
     tb2->addWidget(case_insensitive_check);
-    multi_line_check = new QCheckBox(this);
+    multi_line_check = new QCheckBox();
     multi_line_check->setText(QString::fromWCharArray(L"多行模式"));
     multi_line_check->setToolTip(QString::fromWCharArray(L"^ 和 $ 可以匹配行首行尾"));
     tb2->addWidget(multi_line_check);
-    dot_matches_new_line_check = new QCheckBox(this);
+    dot_matches_new_line_check = new QCheckBox();
     dot_matches_new_line_check->setText(QString::fromWCharArray(L"单行模式"));
     dot_matches_new_line_check->setToolTip(QString::fromWCharArray(L". 可以匹配换行符 \\n"));
     tb2->addWidget(dot_matches_new_line_check);
     addToolBar(tb2);
 
     resize(800, 600);
-    auto centralWidget = new QWidget(this);
-    auto layout = new QGridLayout(centralWidget);
+    auto centralWidget = new QWidget();
+    auto layout = new QVBoxLayout();
     centralWidget->setLayout(layout);
     setCentralWidget(centralWidget);
 
-    treeview = new QTreeView(this);
+    treeview = new QTreeView();
     treeview->setHeaderHidden(true);
     treeview->setEditTriggers(QTreeView::NoEditTriggers);
-    tree_model = new QStandardItemModel(treeview);
+    tree_model = new QStandardItemModel();
     treeview->setModel(tree_model);
 
-    auto right_widget = new QWidget(this);
-    auto right_layout = new QVBoxLayout(right_widget);
+    auto right_widget = new QWidget();
+    auto right_layout = new QVBoxLayout();
     right_layout->setContentsMargins(0, 0, 0, 0);
     right_widget->setLayout(right_layout);
-    regex_edit = new QPlainTextEdit(this);
+    regex_edit = new QPlainTextEdit();
     regex_edit->setPlaceholderText(QString::fromWCharArray(L"在此输入正则表达式"));
     right_layout->addWidget(regex_edit);
 
-    replace_edit = new QPlainTextEdit(this);
+    replace_edit = new QPlainTextEdit();
     replace_edit->setPlaceholderText(QString::fromWCharArray(L"在此输入用来替换的文本\n$x 或 ${x} 可引用分组，如 $1、$a、${abc}"));
     replace_edit->setHidden(true);
     right_layout->addWidget(replace_edit);
 
-    input_edit = new QPlainTextEdit(this);
+    input_edit = new QPlainTextEdit();
     input_edit->setPlaceholderText(QString::fromWCharArray(L"在此输入用来匹配的文本"));
     right_layout->addWidget(input_edit);
 
-    auto groupbox = new QGroupBox(QString::fromWCharArray(L"结果"), this);
-    auto grouplayout = new QVBoxLayout(groupbox);
+    auto groupbox = new QGroupBox(QString::fromWCharArray(L"结果"));
+    auto grouplayout = new QVBoxLayout();
     groupbox->setLayout(grouplayout);
-    result_table = new QTableView(groupbox);
+    result_table = new QTableView();
     result_table->setEditTriggers(QAbstractItemView::NoEditTriggers);
     result_table->setSelectionMode(QAbstractItemView::ContiguousSelection);
     result_table->setVerticalScrollMode(QAbstractItemView::ScrollMode::ScrollPerPixel);
-    table_model = new QStandardItemModel(result_table);
+    table_model = new QStandardItemModel();
     result_table->setModel(table_model);
     grouplayout->addWidget(result_table);
-    result_edit = new QPlainTextEdit(groupbox);
+    result_edit = new QPlainTextEdit();
     result_edit->setHidden(true);
     grouplayout->addWidget(result_edit);
 
@@ -81,14 +81,17 @@ MainWindow::MainWindow(QWidget *parent)
     table_menu->addAction(QString::fromWCharArray(L"复制选区"), this, &MainWindow::onTableCopy);
     table_menu->addAction(QString::fromWCharArray(L"导出 csv"), this, &MainWindow::onTableExportCsv);
 
-    layout->addWidget(treeview, 0, 0);
-    layout->addWidget(right_widget, 0, 1);
-    layout->addWidget(groupbox, 1, 0, 1, 2);
-
-    layout->setRowStretch(0, 2);
-    layout->setRowStretch(1, 1);
-    layout->setColumnStretch(0, 1);
-    layout->setColumnStretch(1, 2);
+    auto sp_top = new QSplitter(Qt::Orientation::Horizontal);
+    sp_top->addWidget(treeview);
+    sp_top->addWidget(right_widget);
+    sp_top->setChildrenCollapsible(false);
+    sp_top->setStretchFactor(0, 1);
+    sp_top->setStretchFactor(1, 2);
+    auto sp_main = new QSplitter(Qt::Orientation::Vertical);
+    sp_main->addWidget(sp_top);
+    sp_main->addWidget(groupbox);
+    sp_main->setChildrenCollapsible(false);
+    layout->addWidget(sp_main);
 
     timer = new QTimer(this);
     timer->setSingleShot(true);

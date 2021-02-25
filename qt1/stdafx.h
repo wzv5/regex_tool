@@ -12,9 +12,8 @@
 #include <QDebug>
 #include <QFile>
 #include <QFileDialog>
-#include <QGridLayout>
+#include <QVBoxLayout>
 #include <QGroupBox>
-#include <QHBoxLayout>
 #include <QLabel>
 #include <QMainWindow>
 #include <QMenu>
@@ -25,7 +24,10 @@
 #include <QPlainTextEdit>
 #include <QToolBar>
 #include <QTreeView>
-#include <QtGui>
+#include <QTimer>
+#include <QStandardItemModel>
+#include <QClipboard>
+#include <QSplitter>
 
 #include "bridge.h"
 #include "csv.hpp"
