@@ -47,8 +47,8 @@ public:
   String(const char *);
   String(const char *, std::size_t);
 
-  String &operator=(const String &) noexcept;
-  String &operator=(String &&) noexcept;
+  String &operator=(const String &) & noexcept;
+  String &operator=(String &&) & noexcept;
 
   explicit operator std::string() const;
 
@@ -96,7 +96,7 @@ public:
   Str(const char *);
   Str(const char *, std::size_t);
 
-  Str &operator=(const Str &) noexcept = default;
+  Str &operator=(const Str &) & noexcept = default;
 
   explicit operator std::string() const;
 
@@ -142,8 +142,8 @@ template <>
 struct copy_assignable_if<false> {
   copy_assignable_if() noexcept = default;
   copy_assignable_if(const copy_assignable_if &) noexcept = default;
-  copy_assignable_if &operator=(const copy_assignable_if &) noexcept = delete;
-  copy_assignable_if &operator=(copy_assignable_if &&) noexcept = default;
+  copy_assignable_if &operator=(const copy_assignable_if &) & noexcept = delete;
+  copy_assignable_if &operator=(copy_assignable_if &&) & noexcept = default;
 };
 } // namespace detail
 
@@ -156,8 +156,8 @@ public:
   Slice() noexcept;
   Slice(T *, std::size_t count) noexcept;
 
-  Slice &operator=(const Slice<T> &) noexcept = default;
-  Slice &operator=(Slice<T> &&) noexcept = default;
+  Slice &operator=(const Slice<T> &) & noexcept = default;
+  Slice &operator=(Slice<T> &&) & noexcept = default;
 
   T *data() const noexcept;
   std::size_t size() const noexcept;
@@ -434,7 +434,7 @@ public:
   explicit Box(const T &);
   explicit Box(T &&);
 
-  Box &operator=(Box &&) noexcept;
+  Box &operator=(Box &&) & noexcept;
 
   const T *operator->() const noexcept;
   const T &operator*() const noexcept;
@@ -510,7 +510,7 @@ Box<T>::~Box() noexcept {
 }
 
 template <typename T>
-Box<T> &Box<T>::operator=(Box &&other) noexcept {
+Box<T> &Box<T>::operator=(Box &&other) & noexcept {
   if (this->ptr) {
     this->drop();
   }
@@ -595,8 +595,8 @@ public:
   Vec(Vec &&) noexcept;
   ~Vec() noexcept;
 
-  Vec &operator=(Vec &&) noexcept;
-  Vec &operator=(const Vec &);
+  Vec &operator=(Vec &&) & noexcept;
+  Vec &operator=(const Vec &) &;
 
   std::size_t size() const noexcept;
   bool empty() const noexcept;
@@ -667,17 +667,15 @@ Vec<T>::~Vec() noexcept {
 }
 
 template <typename T>
-Vec<T> &Vec<T>::operator=(Vec &&other) noexcept {
-  if (this != &other) {
-    this->drop();
-    this->repr = other.repr;
-    new (&other) Vec();
-  }
+Vec<T> &Vec<T>::operator=(Vec &&other) & noexcept {
+  this->drop();
+  this->repr = other.repr;
+  new (&other) Vec();
   return *this;
 }
 
 template <typename T>
-Vec<T> &Vec<T>::operator=(const Vec &other) {
+Vec<T> &Vec<T>::operator=(const Vec &other) & {
   if (this != &other) {
     this->drop();
     new (this) Vec(other);
@@ -823,8 +821,8 @@ public:
   Error(Error &&) noexcept;
   ~Error() noexcept override;
 
-  Error &operator=(const Error &);
-  Error &operator=(Error &&) noexcept;
+  Error &operator=(const Error &) &;
+  Error &operator=(Error &&) & noexcept;
 
   const char *what() const noexcept override;
 
