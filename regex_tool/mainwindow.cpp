@@ -151,6 +151,15 @@ void MainWindow::setTextColor(QPlainTextEdit *edit, int start, int end)
     cursor.setPosition(start);
     edit->setTextCursor(cursor);
     edit->ensureCursorVisible();
+
+    // 如果开始和结束位置相同，只设置光标位置，不高亮，
+    // 否则 Qt 会高亮一整行
+    if (start == end)
+    {
+        edit->setFocus();
+        return;
+    }
+
     cursor.setPosition(end, QTextCursor::KeepAnchor);
 
     auto fmt = QTextCharFormat();
@@ -423,6 +432,7 @@ void MainWindow::onTableSelectionChanged(const QModelIndex &current, const QMode
 {
     auto point = current.data(Qt::UserRole + 1).toPoint();
     setTextColor(input_edit, point.x(), point.y());
+    statusbar->showMessage(QString("(%1, %2) %3").arg(point.x()).arg(point.y()).arg(current.data().toString()));
 }
 
 bool MainWindow::eventFilter(QObject *watched, QEvent *event)
