@@ -1,4 +1,4 @@
-#include "stdafx.h"
+#include "pch.h"
 #include "mainwindow.h"
 
 int main(int argc, char* argv[])

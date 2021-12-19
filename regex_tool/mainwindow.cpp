@@ -1,4 +1,4 @@
-﻿#include "stdafx.h"
+﻿#include "pch.h"
 #include "mainwindow.h"
 
 MainWindow::MainWindow(QWidget *parent)
