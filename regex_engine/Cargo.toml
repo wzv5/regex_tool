@@ -12,7 +12,7 @@ crate-type = ["staticlib"]
 
 [dependencies]
 regex-syntax = "0.6"
-regex = "1.4"
+regex = "1.5"
 anyhow = "1.0"
 cxx = "1.0"
 
