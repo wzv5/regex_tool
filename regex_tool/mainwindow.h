@@ -1,7 +1,7 @@
 #ifndef MAINWINDOW_H
 #define MAINWINDOW_H
 
-struct TreeNode;
+#include "cppbridge.rs.h"
 
 class MainWindow : public QMainWindow
 {

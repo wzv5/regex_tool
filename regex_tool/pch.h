@@ -29,5 +29,4 @@
 #include <QClipboard>
 #include <QSplitter>
 
-#include "cppbridge.rs.h"
 #include "csv.hpp"
