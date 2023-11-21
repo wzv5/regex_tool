@@ -35,15 +35,18 @@ scoop install wzv5/regex-tool
 
 ## 编译
 
-安装 rust，并安装依赖：
+安装 rust，然后使用 cmake 编译。
 
-``` bash
-cargo install cxxbridge-cmd
+Windows 编译示例：
+
+```shell
+git clone https://github.com/wzv5/regex_tool
+cd regex_tool
+mkdir build
+cd build
+cmake .. -G 'Visual Studio 17 2022' -DQt6_ROOT=D:\Qt\6.6.0\msvc2019_64
+cmake --build . --config Release
 ```
-
-之后直接使用 cmake 编译即可。
-
-Windows 平台或许需要设置 `CMAKE_PREFIX_PATH`，添加 Qt 库的相关路径，如 `-DCMAKE_PREFIX_PATH=D:/Qt/6.0.0/msvc2019_64`。
 
 ## 已知问题
 

@@ -82,31 +82,29 @@ impl regex_syntax::ast::Visitor for MyAstVisitor {
             Ast::Literal(literal) => ("字符".into(), literal.c.to_string()),
             Ast::Dot(span) => ("任意字符".into(), String::new()),
             Ast::Assertion(assertion) => ("文本边界".into(), format!("{:?}", assertion.kind)),
-            Ast::Class(class) => match class {
-                regex_syntax::ast::Class::Unicode(class1) => (
-                    "Unicode 类别".into(),
-                    format!(
-                        "{}{:?}",
-                        if class1.negated { "非" } else { "" },
-                        class1.kind
-                    ),
+            Ast::ClassUnicode(class1) => (
+                "Unicode 类别".into(),
+                format!(
+                    "{}{:?}",
+                    if class1.negated { "非" } else { "" },
+                    class1.kind
                 ),
-                regex_syntax::ast::Class::Perl(class1) => (
-                    "Perl 类别".into(),
-                    format!(
-                        "{}{:?}",
-                        if class1.negated { "非" } else { "" },
-                        class1.kind
-                    ),
+            ),
+            Ast::ClassPerl(class1) => (
+                "Perl 类别".into(),
+                format!(
+                    "{}{:?}",
+                    if class1.negated { "非" } else { "" },
+                    class1.kind
                 ),
-                regex_syntax::ast::Class::Bracketed(class1) => {
-                    if class1.negated {
-                        ("不在集合中".into(), String::new())
-                    } else {
-                        ("字符集合".into(), String::new())
-                    }
+            ),
+            Ast::ClassBracketed(class1) => {
+                if class1.negated {
+                    ("不在集合中".into(), String::new())
+                } else {
+                    ("字符集合".into(), String::new())
                 }
-            },
+            }
             Ast::Repetition(repetition) => {
                 let mode = if repetition.greedy {
                     "贪婪"
@@ -131,7 +129,10 @@ impl regex_syntax::ast::Visitor for MyAstVisitor {
                 regex_syntax::ast::GroupKind::CaptureIndex(i) => {
                     (format!("索引分组<{}>", i), String::new())
                 }
-                regex_syntax::ast::GroupKind::CaptureName(n) => (
+                regex_syntax::ast::GroupKind::CaptureName {
+                    starts_with_p: _,
+                    name: n,
+                } => (
                     format!("命名分组<{}>", n.name),
                     format!("index: {}", n.index),
                 ),
@@ -153,18 +154,6 @@ impl regex_syntax::ast::Visitor for MyAstVisitor {
     }
 
     fn visit_post(&mut self, ast: &Ast) -> Result<(), Self::Err> {
-        match ast {
-            Ast::Empty(span) => {}
-            Ast::Flags(flags) => {}
-            Ast::Literal(literal) => {}
-            Ast::Dot(span) => {}
-            Ast::Assertion(assertion) => {}
-            Ast::Class(class) => {}
-            Ast::Repetition(repetition) => {}
-            Ast::Group(group) => {}
-            Ast::Alternation(alternation) => {}
-            Ast::Concat(concat) => {}
-        }
         self.tree = self.tree.parent().unwrap();
         Ok(())
     }

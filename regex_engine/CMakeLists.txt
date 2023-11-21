@@ -1,35 +1,26 @@
 find_program(CARGO cargo REQUIRED PATHS $ENV{HOME}/.cargo/bin)
 message(STATUS "Using cargo: ${CARGO}")
 
-find_program(CXXBRIDGE cxxbridge REQUIRED PATHS $ENV{HOME}/.cargo/bin)
-message(STATUS "Using cxxbridge: ${CXXBRIDGE}")
+set(CARGO_TARGET_DIR ${CMAKE_CURRENT_BINARY_DIR}/target)
+set(CARGO_PROFILE $<IF:$<CONFIG:Debug>,debug,release>)
+set(CXXBRIDGE_DIR ${CARGO_TARGET_DIR}/cxxbridge/regex_engine/src)
+set(CXXBRIDGE_CC ${CXXBRIDGE_DIR}/cppbridge.rs.cc)
 
-add_custom_target(regex_engine_target ALL
-  COMMAND ${CARGO} build --release --target-dir ${CMAKE_CURRENT_BINARY_DIR}
+add_custom_target(cargo_build_target
+  COMMAND ${CARGO} build $<$<NOT:$<CONFIG:Debug>>:--release> --target-dir ${CARGO_TARGET_DIR}
   WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
-  COMMENT "Runing cargo build"
-)
-
-set(cxxbridge_in ${CMAKE_CURRENT_SOURCE_DIR}/src/cppbridge.rs)
-set(cxxbridge_source_out ${CMAKE_CURRENT_BINARY_DIR}/bridge.cpp)
-set(cxxbridge_header_out ${CMAKE_CURRENT_BINARY_DIR}/bridge.h)
-
-add_custom_command(
-  OUTPUT ${cxxbridge_source_out} ${cxxbridge_header_out}
-  COMMAND ${CXXBRIDGE} ${cxxbridge_in} ${cxxbridge_args} --header --output ${cxxbridge_header_out}
-  COMMAND ${CXXBRIDGE} ${cxxbridge_in} ${cxxbridge_args} --output ${cxxbridge_source_out}
-  COMMENT "Generating CXX Bridge: ${cxxbridge_header_out} ${cxxbridge_source_out}"
-  DEPENDS ${cxxbridge_in}
+  BYPRODUCTS ${CXXBRIDGE_CC}
 )
 
 if (WIN32)
-  set(RUST_DEPEND ws2_32 userenv advapi32 bcrypt)
+  set(RUST_DEPEND ntdll ws2_32 userenv advapi32 bcrypt)
 else()
   set(RUST_DEPEND pthread m dl)
 endif()
 
-add_library(bridge STATIC ${cxxbridge_source_out})
-add_dependencies(bridge regex_engine_target)
-target_link_directories(bridge PUBLIC ${CMAKE_CURRENT_BINARY_DIR}/release)
-target_include_directories(bridge PUBLIC ${CMAKE_CURRENT_BINARY_DIR})
+add_library(bridge STATIC ${CXXBRIDGE_CC})
+add_dependencies(bridge cargo_build_target)
+target_link_directories(bridge PUBLIC ${CARGO_TARGET_DIR}/${CARGO_PROFILE})
+target_include_directories(bridge PUBLIC ${CXXBRIDGE_DIR})
 target_link_libraries(bridge PUBLIC regex_engine ${RUST_DEPEND})
+set_target_properties(bridge PROPERTIES ADDITIONAL_CLEAN_FILES ${CARGO_TARGET_DIR})
