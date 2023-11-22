@@ -3,8 +3,7 @@ cmake_minimum_required(VERSION 3.16)
 project(regex-tool LANGUAGES CXX)
 
 if (MSVC)
-  # 必须，rust 始终链接到 release dll
-  set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreadedDLL")
+  set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>DLL")
 endif()
 
 set(CMAKE_CXX_STANDARD 20)

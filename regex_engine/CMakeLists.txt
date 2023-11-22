@@ -6,8 +6,12 @@ set(CARGO_PROFILE $<IF:$<CONFIG:Debug>,debug,release>)
 set(CXXBRIDGE_DIR ${CARGO_TARGET_DIR}/cxxbridge/regex_engine/src)
 set(CXXBRIDGE_CC ${CXXBRIDGE_DIR}/cppbridge.rs.cc)
 
+if (MSVC)
+  set(CARGO_BUILD_ENV ${CMAKE_COMMAND} -E env CXXFLAGS=/MD$<$<CONFIG:Debug>:d> --)
+endif()
+
 add_custom_target(cargo_build_target
-  COMMAND ${CARGO} build $<$<NOT:$<CONFIG:Debug>>:--release> --target-dir ${CARGO_TARGET_DIR}
+  COMMAND ${CARGO_BUILD_ENV} ${CARGO} build $<$<NOT:$<CONFIG:Debug>>:--release> --target-dir ${CARGO_TARGET_DIR}
   WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
   BYPRODUCTS ${CXXBRIDGE_CC}
 )
@@ -19,7 +23,6 @@ else()
 endif()
 
 add_library(bridge STATIC ${CXXBRIDGE_CC})
-add_dependencies(bridge cargo_build_target)
 target_link_directories(bridge PUBLIC ${CARGO_TARGET_DIR}/${CARGO_PROFILE})
 target_include_directories(bridge PUBLIC ${CXXBRIDGE_DIR})
 target_link_libraries(bridge PUBLIC regex_engine ${RUST_DEPEND})

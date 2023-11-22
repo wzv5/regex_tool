@@ -3,9 +3,7 @@ if (NOT Qt6_FOUND)
   find_package(Qt5 COMPONENTS Widgets REQUIRED)
 endif()
 
-set(CMAKE_AUTOUIC ON)
 set(CMAKE_AUTOMOC ON)
-set(CMAKE_AUTORCC ON)
 
 add_executable(regex-tool
   main.cpp
