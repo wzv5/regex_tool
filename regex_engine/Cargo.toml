@@ -11,7 +11,7 @@ crate-type = ["staticlib"]
 regex-syntax = "0.8.2"
 regex = "1.10.2"
 anyhow = "1.0.75"
-cxx = "1.0.110"
+cxx = { version = "1.0.110", features = ["c++20"] }
 
 [build-dependencies]
 cxx-build = "1.0.110"
