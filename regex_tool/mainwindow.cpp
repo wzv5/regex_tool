@@ -1,8 +1,7 @@
 ﻿#include "pch.h"
 #include "mainwindow.h"
 
-MainWindow::MainWindow(QWidget *parent)
-    : QMainWindow(parent), re(rust::Box<Regex>::from_raw(nullptr))
+MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent)
 {
     statusbar = new QStatusBar();
     setStatusBar(statusbar);
@@ -200,7 +199,7 @@ void MainWindow::onTimer()
     {
         tree_model->clear();
         last_regex.clear();
-        re = re.from_raw(nullptr);
+        re = std::nullopt;
         try
         {
             last_regex = text;
@@ -231,12 +230,11 @@ void MainWindow::onMatch()
     auto s = input_edit->toPlainText().toUtf8();
     try
     {
-        // 无法直接获取内部指针，变通一下
-        if (!&*re)
+        if (!re.has_value())
         {
             throw std::runtime_error(QString::fromWCharArray(L"无法解析").toUtf8().data());
         }
-        auto result = regex_match(re, s.data());
+        auto result = regex_match(re.value(), s.data());
         table_model->setColumnCount(result.group_names.size());
         for (size_t i = 0; i < result.group_names.size(); i++)
         {
@@ -267,8 +265,8 @@ void MainWindow::onMatch()
     {
         table_model->appendRow(new QStandardItem(QString::fromWCharArray(L"错误：%1").arg(QString::fromUtf8(ex.what()))));
     }
-    //result_table->resizeRowsToContents();
-    //result_table->resizeColumnsToContents();
+    // result_table->resizeRowsToContents();
+    // result_table->resizeColumnsToContents();
 }
 
 void MainWindow::onReplace()
@@ -277,12 +275,11 @@ void MainWindow::onReplace()
     auto rep = replace_edit->toPlainText().toUtf8();
     try
     {
-        // 无法直接获取内部指针，变通一下
-        if (!&*re)
+        if (!re.has_value())
         {
             throw std::runtime_error(QString::fromWCharArray(L"无法解析").toUtf8().data());
         }
-        auto result = regex_replace(re, text.data(), rep.data());
+        auto result = regex_replace(re.value(), text.data(), rep.data());
         result_edit->setPlainText(QString::fromUtf8(result.data(), result.size()));
     }
     catch (const std::exception &ex)
@@ -296,12 +293,11 @@ void MainWindow::onSplit()
     auto text = input_edit->toPlainText().toUtf8();
     try
     {
-        // 无法直接获取内部指针，变通一下
-        if (!&*re)
+        if (!re.has_value())
         {
             throw std::runtime_error(QString::fromWCharArray(L"无法解析").toUtf8().data());
         }
-        auto result = regex_split(re, text.data());
+        auto result = regex_split(re.value(), text.data());
         QStringList list;
         for (auto &&i : result)
         {

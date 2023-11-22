@@ -37,7 +37,7 @@ private:
     QStandardItemModel *table_model;
     QTableView *result_table;
     QString last_regex;
-    rust::Box<Regex> re;
+    std::optional<rust::Box<Regex>> re;
     QStatusBar *statusbar;
     QCheckBox *ignore_whitespace_check;
     QCheckBox *case_insensitive_check;
